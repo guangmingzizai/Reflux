@@ -1,0 +1,22 @@
+{
+  "name": "Reflux",
+  "version": "0.1.0",
+  "summary": "A short description of Reflux.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/guangmingzizai@qq.com/Reflux",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "guangmingzizai@qq.com": "guangmingzizai@qq.com"
+  },
+  "source": {
+    "git": "https://github.com/guangmingzizai@qq.com/Reflux.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "8.0"
+  },
+  "source_files": "Reflux/Classes/**/*"
+}

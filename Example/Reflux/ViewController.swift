@@ -7,18 +7,33 @@
 //
 
 import UIKit
+import Reflux
 
 class ViewController: UIViewController {
 
+    private let store: CountStore = CountStore()
+    private var storeUnsubscribable: Unsubscribable?
+    
+    @IBOutlet weak var countLabel: UILabel!
+    
+    deinit {
+        storeUnsubscribable?.unsubscribe()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+        
+        storeUnsubscribable =
+        store.makeTarget(self, output: { [unowned self] (count: Int?) in
+            if let count = count {
+                self.countLabel.text = "Count: \(count)"
+            }
+        })
     }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    
+    @IBAction func onTapAddButton(_ sender: Any) {
+        countDispatcher.dispatch(CountAction())
     }
-
+    
 }
 
