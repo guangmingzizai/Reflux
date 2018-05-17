@@ -25,7 +25,7 @@ class CountStore: Store<Int> {
         switch action {
         case _ as CountAction:
             count += 1
-            output(state: count)
+            output(count)
         default:
             break
         }

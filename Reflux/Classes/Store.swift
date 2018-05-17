@@ -11,22 +11,34 @@ open class Store<TState>: NSObject {
     public typealias OutputCallback = (_: TState?) -> Void
     public typealias ErrorCallback = (_: Error) -> Void
     
-    private var dispatcher: Dispatcher
-    private var dispatchToken: DispatchToken?
+    private var dispatchers: [DispatchToken: Dispatcher] = [:]
     
     private var subscribables: [Subscribable<TState>] = []
     
     deinit {
-        dispatcher.unregister(id: dispatchToken!)
+        for (token, dispatcher) in dispatchers {
+            dispatcher.unregister(id: token)
+        }
     }
     
     public init(dispatcher: Dispatcher) {
-        self.dispatcher = dispatcher
         super.init()
         
-        dispatchToken = dispatcher.register(callback: {[unowned self] (action) in
-            self.onEvent(action: action)
+        let dispatchToken = dispatcher.register(callback: {[weak self] (action) in
+            self?.onEvent(action: action)
         })
+        dispatchers[dispatchToken] = dispatcher
+    }
+    
+    public init(dispatchers: [Dispatcher]) {
+        super.init()
+        
+        for dispatcher in dispatchers {
+            let dispatchToken = dispatcher.register(callback: {[weak self] (action) in
+                self?.onEvent(action: action)
+            })
+            self.dispatchers[dispatchToken] = dispatcher
+        }
     }
     
     open func onEvent(action: Action) -> Void {
