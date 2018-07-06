@@ -40,7 +40,10 @@ public class Dispatcher {
      * Removes a callback based on its token.
      */
     public func unregister(id: DispatchToken) -> Void {
-        assert(callbacks.contains(where: { $0.key == id }), "Dispatcher.unregister(...): `\(id)` does not map to a registered callback.")
+        guard callbacks.contains(where: { $0.key == id }) else {
+            print("Dispatcher.unregister(...): `\(id)` does not map to a registered callback.")
+            return
+        }
         callbacks.removeValue(forKey: id)
     }
     
@@ -50,15 +53,24 @@ public class Dispatcher {
      * response to a dispatched payload.
      */
     public func waitFor(ids: [DispatchToken]) -> Void {
-        assert(isDispatching, "Dispatcher.waitFor(...): Must be invoked while dispatching.")
+        guard isDispatching else {
+            print("Dispatcher.waitFor(...): Must be invoked while dispatching.")
+            return
+        }
         
         for id in ids {
             if let _ = isPending[id] {
-                assert(isHandled[id] == true, "Dispatcher.waitFor(...): Circular dependency detected while waiting for `\(id)`.")
+                guard isHandled[id] == true else {
+                    print("Dispatcher.waitFor(...): Circular dependency detected while waiting for `\(id)`.")
+                    return
+                }
                 continue
             }
-            assert(callbacks[id] != nil, "Dispatcher.waitFor(...): `\(id)` does not map to a registered callback.")
-            invokeCallback(id)
+            if callbacks[id] != nil {
+                invokeCallback(id)
+            } else {
+                print("Dispatcher.waitFor(...): `\(id)` does not map to a registered callback.")
+            }
         }
     }
     
@@ -66,7 +78,11 @@ public class Dispatcher {
      * Dispatches a payload to all registered callbacks.
      */
     open func dispatch(_ action: Action) -> Void {
-        assert(!isDispatching, "Dispatch.dispatch(...): Cannot dispatch in the middle of a dispatch.")
+        guard !isDispatching else {
+            print("Dispatch.dispatch(...): Cannot dispatch in the middle of a dispatch.")
+            return
+        }
+        
         startDispatching(action)
         for (id, _) in callbacks {
             if isPending[id] == true {
