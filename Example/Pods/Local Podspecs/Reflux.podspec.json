@@ -18,5 +18,7 @@
   "platforms": {
     "ios": "8.0"
   },
-  "source_files": "Reflux/Classes/**/*"
+  "source_files": "Reflux/Classes/**/*",
+  "swift_versions": "5.0",
+  "swift_version": "5.0"
 }

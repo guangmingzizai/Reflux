@@ -12,7 +12,6 @@ open class Store<TState>: NSObject {
     public typealias ErrorCallback = (_: Error) -> Void
     
     private var dispatchers: [DispatchToken: Dispatcher] = [:]
-    
     private var subscribables: [Subscribable<TState>] = []
     
     deinit {
@@ -38,6 +37,12 @@ open class Store<TState>: NSObject {
                 self?.onEvent(action: action)
             })
             self.dispatchers[dispatchToken] = dispatcher
+        }
+    }
+    
+    public func dispatch(_ action: Action) {
+        for dispatcher in dispatchers.values {
+            dispatcher.dispatch(action)
         }
     }
     
