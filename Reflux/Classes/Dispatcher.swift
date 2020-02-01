@@ -12,39 +12,67 @@ public typealias Callback = (_: Action) -> Void
 
 fileprivate let prefix = "ID_"
 
+struct CallbackItem {
+    var callback: Callback
+    var queue: DispatchQueue?
+}
+
 public class Dispatcher {
-    
-    private var callbacks: [DispatchToken: Callback] = [:]
+    private var callbacks: [DispatchToken: CallbackItem] = [:]
     public var isDispatching: Bool = false // Is this Dispatcher currently dispatching.
     private var isHandled: [DispatchToken: Bool] = [:]
     private var isPending: [DispatchToken: Bool] = [:]
-    private var lastID: Int = 1
+    private var lastID: Int64 = 1
     private var pendingAction: Action? = nil
+    private var mutex: pthread_mutex_t
     
     public init() {
-        
+        var attr = pthread_mutexattr_t()
+        pthread_mutexattr_init(&attr)
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)
+         
+        defer { pthread_mutexattr_destroy(&attr) }
+         
+        mutex = pthread_mutex_t()
+        pthread_mutex_init(&mutex, &attr)
+    }
+    
+    @inline(__always)
+    fileprivate func lock() {
+        let result = pthread_mutex_lock(&mutex)
+        precondition(result == 0, "Failed to lock \(self) with error \(result).")
+    }
+
+    @inline(__always)
+    fileprivate func unlock() {
+        let result = pthread_mutex_unlock(&mutex)
+        precondition(result == 0, "Failed to unlock \(self) with error \(result).")
     }
     
     /**
      * Registers a callback to be invoked with every dispatched payload. Returns
      * a token that can be used with `waitFor()`.
      */
-    public func register(callback: @escaping Callback) -> DispatchToken {
+    public func register(callback: @escaping Callback, on aQueue: DispatchQueue? = nil) -> DispatchToken {
+        lock()
         lastID += 1
-        let id = "\(prefix)\(lastID)"
-        callbacks[id] = callback
-        return id
+        let token = "\(prefix)\(lastID)"
+        callbacks[token] = CallbackItem(callback: callback, queue: aQueue)
+        unlock()
+        return token
     }
     
     /**
      * Removes a callback based on its token.
      */
     public func unregister(id: DispatchToken) -> Void {
+        lock()
         guard callbacks.contains(where: { $0.key == id }) else {
             print("Dispatcher.unregister(...): `\(id)` does not map to a registered callback.")
             return
         }
         callbacks.removeValue(forKey: id)
+        unlock()
     }
     
     /**
@@ -78,29 +106,37 @@ public class Dispatcher {
      * Dispatches a payload to all registered callbacks.
      */
     open func dispatch(_ action: Action) -> Void {
-        guard !isDispatching else {
+        lock()
+        guard !self.isDispatching else {
             print("Dispatch.dispatch(...): Cannot dispatch in the middle of a dispatch.")
             return
         }
         
-        startDispatching(action)
-        for (id, _) in callbacks {
-            if isPending[id] == true {
+        self.startDispatching(action)
+        for (id, _) in self.callbacks {
+            if self.isPending[id] == true {
                 continue
             }
-            invokeCallback(id)
+            self.invokeCallback(id)
         }
-        stopDispatching()
+        self.stopDispatching()
+        unlock()
     }
     
     /**
      * Call the callback stored with the given id. Also do some internal
      * bookkeeping.
      */
-    private func invokeCallback(_ id: DispatchToken) -> Void {
+    private func invokeCallback(_ id: DispatchToken, onQueue: Bool = true) -> Void {
         isPending[id] = true
-        if let callback = callbacks[id], let pendingAction = pendingAction {
-            callback(pendingAction)
+        if let callbackItem = callbacks[id], let pendingAction = pendingAction {
+            if onQueue, let queue = callbackItem.queue {
+                queue.async {
+                    callbackItem.callback(pendingAction)
+                }
+            } else {
+                callbackItem.callback(pendingAction)
+            }
         }
         isHandled[id] = true
     }

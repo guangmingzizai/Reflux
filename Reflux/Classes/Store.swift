@@ -20,22 +20,22 @@ open class Store<TState>: NSObject {
         }
     }
     
-    public init(dispatcher: Dispatcher) {
+    public init(dispatcher: Dispatcher, queue: DispatchQueue? = nil) {
         super.init()
         
         let dispatchToken = dispatcher.register(callback: {[weak self] (action) in
             self?.onEvent(action: action)
-        })
+        }, on: queue)
         dispatchers[dispatchToken] = dispatcher
     }
     
-    public init(dispatchers: [Dispatcher]) {
+    public init(dispatchers: [Dispatcher], queue: DispatchQueue? = nil) {
         super.init()
         
         for dispatcher in dispatchers {
             let dispatchToken = dispatcher.register(callback: {[weak self] (action) in
                 self?.onEvent(action: action)
-            })
+            }, on: queue)
             self.dispatchers[dispatchToken] = dispatcher
         }
     }
