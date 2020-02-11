@@ -25,6 +25,7 @@ public class Dispatcher {
     private var lastID: Int64 = 1
     private var pendingAction: Action? = nil
     private var mutex: pthread_mutex_t
+    private var pendingActions: [Action] = []
     
     public init() {
         var attr = pthread_mutexattr_t()
@@ -108,7 +109,7 @@ public class Dispatcher {
     open func dispatch(_ action: Action) -> Void {
         lock()
         guard !self.isDispatching else {
-            print("Dispatch.dispatch(...): Cannot dispatch in the middle of a dispatch.")
+            pendingActions.append(action)
             return
         }
         
@@ -121,6 +122,10 @@ public class Dispatcher {
         }
         self.stopDispatching()
         unlock()
+        
+        if let action = pendingActions.popLast() {
+            dispatch(action)
+        }
     }
     
     /**
