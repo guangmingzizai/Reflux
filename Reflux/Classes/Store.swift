@@ -66,6 +66,14 @@ open class Store<TState>: NSObject {
         return nil
     }
     
+    /**
+     * Update state with callback, then output.
+     */
+    open func setState(_ callback: () -> Void) {
+        callback()
+        output(getState())
+    }
+    
     @discardableResult
     public func makeTarget(_ target: AnyObject, output: @escaping OutputCallback, completion: VoidBlock? = nil, error: ErrorCallback? = nil, initialCallback: OutputCallback? = nil, finally: VoidBlock? = nil) -> Unsubscribable {
         var subscribable = subscribables.first { $0.target === target }
